@@ -6,15 +6,18 @@ import { signOut } from "next-auth/react";
 import type { Session } from "next-auth";
 
 const NAV_ITEMS = [
-  { href: "/dashboard", label: "Ülevaade" },
-  { href: "/ankeedid", label: "Ankeedid" },
-  { href: "/opetused", label: "Õpetused" },
-  { href: "/failid", label: "Minu failid" },
-  { href: "/sonumid", label: "Sõnumid" },
+  { href: "/dashboard", label: "Ülevaade", roles: ["opilane", "opetaja"] },
+  { href: "/ankeedid", label: "Ankeedid", roles: ["opilane", "opetaja"] },
+  { href: "/opetused", label: "Õpetused", roles: ["opilane", "opetaja"] },
+  { href: "/videod", label: "Videod", roles: ["opilane", "opetaja"] },
+  { href: "/failid", label: "Minu failid", roles: ["opilane", "opetaja"] },
+  { href: "/sonumid", label: "Sõnumid", roles: ["opilane", "opetaja"] },
+  { href: "/admin", label: "Admin", roles: ["opetaja"] },
 ];
 
 export default function Navbar({ session }: { session: Session | null }) {
   const pathname = usePathname();
+  const role = session?.user.role ?? "opilane";
 
   if (!session) return null;
 
@@ -26,12 +29,16 @@ export default function Navbar({ session }: { session: Session | null }) {
             Blender Kool
           </Link>
           <div className="hidden md:flex items-center gap-1">
-            {NAV_ITEMS.map((item) => (
+            {NAV_ITEMS.filter((item) => item.roles.includes(role)).map((item) => (
               <Link
                 key={item.href}
                 href={item.href}
                 className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                  pathname.startsWith(item.href)
+                  item.href === "/admin"
+                    ? pathname.startsWith("/admin")
+                      ? "bg-orange-500/20 text-orange-400"
+                      : "text-orange-400/60 hover:text-orange-400 hover:bg-orange-500/10"
+                    : pathname.startsWith(item.href)
                     ? "bg-zinc-800 text-white"
                     : "text-zinc-400 hover:text-white hover:bg-zinc-800"
                 }`}
