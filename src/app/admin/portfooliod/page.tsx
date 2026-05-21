@@ -23,115 +23,70 @@ const OPILASED = [
 ];
 
 type FileType = "blend" | "storyboard" | "video";
-type Portfoolio = { id: string; blend_url: string | null; storyboard_url: string | null; video_url: string | null };
-type UploadingKey = `${string}-${"blend" | "storyboard" | "video"}`;
+type UploadingKey = `${string}-${FileType}`;
+type Counts = Record<string, { blend: number; storyboard: number; video: number }>;
+
+const SLOTS: { type: FileType; icon: string; label: string; accept: string }[] = [
+  { type: "blend",      icon: "🟠", label: "3D failid",  accept: ".blend,.obj,.fbx,.gltf,.glb,.stl,.dae,.3ds,.ply" },
+  { type: "storyboard", icon: "🖼️", label: "Pildid",     accept: "image/*" },
+  { type: "video",      icon: "🎬", label: "Videod",     accept: "video/*" },
+];
 
 function detectType(file: File): FileType | null {
-  const name = file.name.toLowerCase();
-  const mime = file.type;
-  if (name.endsWith(".blend")) return "blend";
-  if (mime.startsWith("image/")) return "storyboard";
-  if (mime.startsWith("video/")) return "video";
+  const ext = file.name.split(".").pop()?.toLowerCase() ?? "";
+  if (["blend","obj","fbx","gltf","glb","stl","dae","3ds","ply"].includes(ext)) return "blend";
+  if (file.type.startsWith("image/")) return "storyboard";
+  if (file.type.startsWith("video/")) return "video";
   return null;
 }
 
-function DropZone({
-  opilane,
-  type,
-  url,
-  uploading,
-  onFile,
-}: {
-  opilane: typeof OPILASED[0];
-  type: FileType;
-  url: string | null;
-  uploading: boolean;
-  onFile: (file: File) => void;
-}) {
-  const [over, setOver] = useState(false);
-  const icon = type === "blend" ? "🟠" : type === "storyboard" ? "🖼️" : "🎬";
-  const label = type === "blend" ? "Blend" : type === "storyboard" ? "Storyboard" : "Video";
-  const accept = type === "blend" ? ".blend" : type === "storyboard" ? "image/*" : "video/*";
-
-  return (
-    <label
-      className={`relative flex flex-col items-center justify-center gap-1 h-20 rounded-lg border-2 border-dashed cursor-pointer transition-all select-none
-        ${uploading ? "opacity-50 pointer-events-none" : ""}
-        ${over ? "border-orange-400 bg-orange-500/10" : url ? "border-green-700 bg-green-900/10 hover:border-green-500" : "border-zinc-700 bg-zinc-800/50 hover:border-zinc-500"}`}
-      onDragOver={(e) => { e.preventDefault(); setOver(true); }}
-      onDragLeave={() => setOver(false)}
-      onDrop={(e) => {
-        e.preventDefault();
-        setOver(false);
-        const file = e.dataTransfer.files[0];
-        if (file) onFile(file);
-      }}
-    >
-      <span className="text-xl">{uploading ? "⏳" : icon}</span>
-      <span className="text-xs text-zinc-400">{uploading ? "Laadin..." : url ? label + " ✓" : label}</span>
-      {url && !uploading && (
-        <span className="text-[10px] text-green-500">kliki uuendamiseks</span>
-      )}
-      <input
-        type="file"
-        accept={accept}
-        className="hidden"
-        disabled={uploading}
-        onChange={(e) => {
-          const f = e.target.files?.[0];
-          if (f) onFile(f);
-          e.target.value = "";
-        }}
-      />
-    </label>
-  );
-}
-
 export default function AdminPortfooliodPage() {
-  const [portfooliod, setPortfooliod] = useState<Portfoolio[]>([]);
+  const [counts, setCounts] = useState<Counts>({});
   const [uploading, setUploading] = useState<Set<UploadingKey>>(new Set());
   const [dragOver, setDragOver] = useState<string | null>(null);
 
   useEffect(() => { load(); }, []);
 
   async function load() {
-    const { data } = await supabase.from("portfooliod").select("id, blend_url, storyboard_url, video_url");
-    setPortfooliod(data ?? []);
+    const { data } = await supabase
+      .from("portfoolio_failid")
+      .select("slug, tyyp");
+    const c: Counts = {};
+    for (const row of data ?? []) {
+      if (!c[row.slug]) c[row.slug] = { blend: 0, storyboard: 0, video: 0 };
+      c[row.slug][row.tyyp as FileType] = (c[row.slug][row.tyyp as FileType] ?? 0) + 1;
+    }
+    setCounts(c);
   }
 
-  function getP(id: string) { return portfooliod.find((p) => p.id === id); }
-
-  async function uploadFile(opilane: typeof OPILASED[0], type: FileType, file: File) {
+  async function uploadFiles(opilane: typeof OPILASED[0], type: FileType, files: File[]) {
+    if (!files.length) return;
     const key: UploadingKey = `${opilane.id}-${type}`;
     setUploading((s) => new Set(s).add(key));
-
     const form = new FormData();
-    form.append("file", file);
+    files.forEach((f) => form.append("files", f));
     form.append("slug", opilane.slug);
     form.append("id", opilane.id);
     form.append("nimi", opilane.nimi);
     form.append("grupp", opilane.grupp);
     form.append("type", type);
-
     const res = await fetch("/api/upload-portfoolio", { method: "POST", body: form });
-    const data = await res.json();
-
-    if (!res.ok) {
-      alert("Upload ebaõnnestus: " + data.error);
-    } else {
-      await load();
-    }
+    if (!res.ok) { const d = await res.json(); alert("Upload ebaõnnestus: " + d.error); }
+    else await load();
     setUploading((s) => { const n = new Set(s); n.delete(key); return n; });
   }
 
-  function handleCardDrop(e: React.DragEvent, opilane: typeof OPILASED[0]) {
-    e.preventDefault();
-    setDragOver(null);
-    const file = e.dataTransfer.files[0];
-    if (!file) return;
-    const type = detectType(file);
-    if (!type) { alert(`Tundmatu failitüüp: ${file.name}\nKasuta .blend, pilti või videot.`); return; }
-    uploadFile(opilane, type, file);
+  function handleDrop(files: FileList | null, opilane: typeof OPILASED[0], fixedType?: FileType) {
+    if (!files) return;
+    const grouped: Record<FileType, File[]> = { blend: [], storyboard: [], video: [] };
+    for (const file of Array.from(files)) {
+      const t = fixedType ?? detectType(file);
+      if (!t) { alert(`Tundmatu failitüüp: ${file.name}`); continue; }
+      grouped[t].push(file);
+    }
+    for (const [t, fs] of Object.entries(grouped) as [FileType, File[]][]) {
+      if (fs.length) uploadFiles(opilane, t, fs);
+    }
   }
 
   const baseUrl = typeof window !== "undefined" ? window.location.origin : "https://blender-opilased.vercel.app";
@@ -141,29 +96,27 @@ export default function AdminPortfooliodPage() {
       <div className="mb-6">
         <a href="/admin" className="text-zinc-500 hover:text-zinc-300 text-sm">← Admin</a>
         <h1 className="text-2xl font-bold text-white mt-2">Portfooliod</h1>
-        <p className="text-zinc-400 mt-1 text-sm">Lohista fail kaardi peale — tüüp tuvastatakse automaatselt (.blend / pilt / video)</p>
+        <p className="text-zinc-400 mt-1 text-sm">Lohista failid kaardi peale — tüüp tuvastatakse automaatselt. Mitu faili korraga.</p>
       </div>
 
       <div className="space-y-3">
         {OPILASED.map((op) => {
-          const p = getP(op.id);
+          const c = counts[op.slug] ?? { blend: 0, storyboard: 0, video: 0 };
           const isCardOver = dragOver === op.id;
-          const anyUploading = (["blend","storyboard","video"] as FileType[]).some((t) => uploading.has(`${op.id}-${t}` as UploadingKey));
+          const anyUploading = SLOTS.some(({ type }) => uploading.has(`${op.id}-${type}` as UploadingKey));
 
           return (
-            <div
-              key={op.id}
+            <div key={op.id}
               className={`bg-zinc-900 border-2 rounded-xl p-4 transition-all ${isCardOver ? "border-orange-400 bg-orange-500/5" : "border-zinc-800"}`}
               onDragOver={(e) => { e.preventDefault(); setDragOver(op.id); }}
               onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setDragOver(null); }}
-              onDrop={(e) => handleCardDrop(e, op)}
+              onDrop={(e) => { e.preventDefault(); setDragOver(null); handleDrop(e.dataTransfer.files, op); }}
             >
               <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
                 <div className="flex items-center gap-2">
-                  {isCardOver && <span className="text-orange-400 text-sm">Lase lahti →</span>}
-                  {!isCardOver && <span className="font-semibold text-white">{op.nimi}</span>}
-                  <span className="text-xs text-zinc-500 bg-zinc-800 px-2 py-0.5 rounded">{op.grupp}</span>
-                  {anyUploading && <span className="text-xs text-orange-400">laadin...</span>}
+                  <span className="font-semibold text-white">{isCardOver ? "↓ Lase lahti" : op.nimi}</span>
+                  {op.grupp && <span className="text-xs text-zinc-500 bg-zinc-800 px-2 py-0.5 rounded">{op.grupp}</span>}
+                  {anyUploading && <span className="text-xs text-orange-400 animate-pulse">laadin...</span>}
                 </div>
                 <a href={`${baseUrl}/portfoolio/${op.slug}`} target="_blank" rel="noreferrer"
                   className="text-xs text-zinc-500 hover:text-orange-400 font-mono transition-colors">
@@ -172,16 +125,23 @@ export default function AdminPortfooliodPage() {
               </div>
 
               <div className="grid grid-cols-3 gap-2">
-                {(["blend", "storyboard", "video"] as FileType[]).map((type) => (
-                  <DropZone
-                    key={type}
-                    opilane={op}
-                    type={type}
-                    url={type === "blend" ? p?.blend_url ?? null : type === "storyboard" ? p?.storyboard_url ?? null : p?.video_url ?? null}
-                    uploading={uploading.has(`${op.id}-${type}` as UploadingKey)}
-                    onFile={(file) => uploadFile(op, type, file)}
-                  />
-                ))}
+                {SLOTS.map(({ type, icon, label, accept }) => {
+                  const count = c[type];
+                  const busy = uploading.has(`${op.id}-${type}` as UploadingKey);
+                  return (
+                    <label key={type}
+                      className={`flex flex-col items-center gap-1 h-20 rounded-lg border-2 border-dashed cursor-pointer transition-all
+                        ${busy ? "opacity-50 pointer-events-none border-zinc-700" : count > 0 ? "border-green-700 bg-green-900/10 hover:border-green-500" : "border-zinc-700 bg-zinc-800/40 hover:border-zinc-500"}`}
+                      onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
+                      onDrop={(e) => { e.preventDefault(); e.stopPropagation(); handleDrop(e.dataTransfer.files, op, type); }}
+                    >
+                      <span className="text-xl mt-3">{busy ? "⏳" : icon}</span>
+                      <span className="text-xs text-zinc-400">{busy ? "Laadin..." : count > 0 ? `${label} (${count})` : label}</span>
+                      <input type="file" multiple accept={accept} className="hidden" disabled={busy}
+                        onChange={(e) => { handleDrop(e.target.files, op, type); e.target.value = ""; }} />
+                    </label>
+                  );
+                })}
               </div>
             </div>
           );

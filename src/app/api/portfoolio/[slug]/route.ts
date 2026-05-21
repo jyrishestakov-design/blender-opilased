@@ -5,9 +5,17 @@ export async function GET(_: NextRequest, { params }: { params: Promise<{ slug: 
   const { slug } = await params;
   const supabase = supabaseServer();
   const { data } = await supabase
-    .from("portfooliod")
-    .select("blend_url, storyboard_url, video_url")
+    .from("portfoolio_failid")
+    .select("id, tyyp, url, failinimi, created_at")
     .eq("slug", slug)
-    .single();
-  return NextResponse.json(data ?? { blend_url: null, storyboard_url: null, video_url: null });
+    .order("created_at", { ascending: true });
+  return NextResponse.json(data ?? []);
+}
+
+export async function DELETE(request: NextRequest, { params }: { params: Promise<{ slug: string }> }) {
+  const { slug } = await params;
+  const { id } = await request.json();
+  const supabase = supabaseServer();
+  await supabase.from("portfoolio_failid").delete().eq("id", id).eq("slug", slug);
+  return NextResponse.json({ ok: true });
 }

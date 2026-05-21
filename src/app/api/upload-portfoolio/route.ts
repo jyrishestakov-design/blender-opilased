@@ -9,39 +9,46 @@ export async function POST(request: NextRequest) {
   }
 
   const form = await request.formData();
-  const file = form.get("file") as File | null;
+  const files = form.getAll("files") as File[];
   const slug = form.get("slug") as string;
   const id = form.get("id") as string;
   const nimi = form.get("nimi") as string;
   const grupp = form.get("grupp") as string;
   const type = form.get("type") as "blend" | "storyboard" | "video";
 
-  if (!file || !slug || !id || !type) {
+  if (!files.length || !slug || !id || !type) {
     return NextResponse.json({ error: "Missing fields" }, { status: 400 });
   }
 
   const supabase = supabaseServer();
-  const ext = file.name.split(".").pop();
-  const path = `${slug}/${type}.${ext}`;
-  const bytes = await file.arrayBuffer();
-  const buffer = Buffer.from(bytes);
+  const results = [];
 
-  const { error } = await supabase.storage
-    .from("portfooliod")
-    .upload(path, buffer, { upsert: true, contentType: file.type });
+  for (const file of files) {
+    const ext = file.name.split(".").pop();
+    const unique = `${Date.now()}-${Math.random().toString(36).slice(2,7)}`;
+    const path = `${slug}/${type}/${unique}.${ext}`;
+    const bytes = await file.arrayBuffer();
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    const { error } = await supabase.storage
+      .from("portfooliod")
+      .upload(path, Buffer.from(bytes), { upsert: false, contentType: file.type });
 
-  const { data: urlData } = supabase.storage.from("portfooliod").getPublicUrl(path);
-  const field = type === "blend" ? "blend_url" : type === "storyboard" ? "storyboard_url" : "video_url";
+    if (error) { results.push({ error: error.message, file: file.name }); continue; }
 
-  const { error: dbErr } = await supabase.from("portfooliod").upsert({
-    id, opilane_nimi: nimi, grupp, slug,
-    [field]: urlData.publicUrl,
-    updated_at: new Date().toISOString(),
-  }, { onConflict: "id" });
+    const { data: urlData } = supabase.storage.from("portfooliod").getPublicUrl(path);
 
-  if (dbErr) return NextResponse.json({ error: dbErr.message }, { status: 500 });
+    await supabase.from("portfoolio_failid").insert({
+      slug, tyyp: type, url: urlData.publicUrl, failinimi: file.name,
+    });
 
-  return NextResponse.json({ url: urlData.publicUrl });
+    // Keep portfooliod table in sync (latest file per type)
+    await supabase.from("portfooliod").upsert({
+      id, opilane_nimi: nimi, grupp, slug,
+      updated_at: new Date().toISOString(),
+    }, { onConflict: "id" });
+
+    results.push({ url: urlData.publicUrl, file: file.name });
+  }
+
+  return NextResponse.json({ results });
 }

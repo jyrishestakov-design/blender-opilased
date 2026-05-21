@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { useParams, notFound } from "next/navigation";
+import { useParams } from "next/navigation";
 import UploadSection from "./UploadSection";
 
 const OPILASED = [
@@ -23,33 +23,44 @@ const OPILASED = [
   { id: "16", nimi: "Arabella Altrof",          grupp: "G2-5a", slug: "arabella-altrof" },
 ];
 
-type Portfoolio = { blend_url: string | null; storyboard_url: string | null; video_url: string | null };
+type Fail = { id: string; tyyp: string; url: string; failinimi: string };
+
+const TYYBID = [
+  { key: "storyboard", icon: "🖼️", label: "Storyboard / Pildid" },
+  { key: "video",      icon: "🎬", label: "Videod" },
+  { key: "blend",      icon: "🟠", label: "3D failid" },
+];
 
 export default function PortfoolioPage() {
   const params = useParams();
   const slug = params.slug as string;
   const opilane = OPILASED.find((o) => o.slug === slug);
-  const [data, setData] = useState<Portfoolio | null>(null);
+  const [failid, setFailid] = useState<Fail[]>([]);
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
     const res = await fetch(`/api/portfoolio/${slug}`);
-    if (res.ok) setData(await res.json());
+    if (res.ok) setFailid(await res.json());
     setLoading(false);
   }, [slug]);
 
   useEffect(() => { load(); }, [load]);
 
-  if (!opilane) return null;
+  if (!opilane) return (
+    <div className="min-h-screen bg-zinc-950 flex items-center justify-center text-zinc-500">
+      Õpilast ei leitud.
+    </div>
+  );
 
-  const hasAny = data?.blend_url || data?.storyboard_url || data?.video_url;
+  const byType = (t: string) => failid.filter((f) => f.tyyp === t);
+  const hasAny = failid.length > 0;
 
   return (
     <div className="min-h-screen bg-zinc-950 text-white">
       <div className="max-w-3xl mx-auto px-4 py-12">
         <div className="mb-8">
           <a href="/" className="text-zinc-600 hover:text-zinc-400 text-sm transition-colors">← Kõik õpilased</a>
-          <p className="text-orange-400 text-sm font-medium mt-3 mb-1">Blender Kool · {opilane.grupp}</p>
+          <p className="text-orange-400 text-sm font-medium mt-3 mb-1">Blender Kool{opilane.grupp ? ` · ${opilane.grupp}` : ""}</p>
           <h1 className="text-3xl font-bold">{opilane.nimi}</h1>
           <p className="text-zinc-500 mt-1">Portfoolio</p>
         </div>
@@ -62,45 +73,45 @@ export default function PortfoolioPage() {
             <p>Failid pole veel lisatud.</p>
           </div>
         ) : (
-          <div className="space-y-6">
-            {data?.storyboard_url && (
-              <div className="bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden">
-                <div className="px-5 py-3 border-b border-zinc-800 flex items-center gap-2">
-                  <span className="text-lg">🖼️</span>
-                  <h2 className="font-semibold">Storyboard</h2>
-                </div>
-                <div className="p-4">
-                  <img src={data.storyboard_url} alt="Storyboard" className="w-full rounded-lg" />
-                </div>
-              </div>
-            )}
-
-            {data?.video_url && (
-              <div className="bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden">
-                <div className="px-5 py-3 border-b border-zinc-800 flex items-center gap-2">
-                  <span className="text-lg">🎬</span>
-                  <h2 className="font-semibold">Renderdatud video</h2>
-                </div>
-                <div className="p-4">
-                  <video src={data.video_url} controls className="w-full rounded-lg" />
-                </div>
-              </div>
-            )}
-
-            {data?.blend_url && (
-              <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-5 flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <span className="text-2xl">🟠</span>
-                  <div>
-                    <p className="font-semibold">Blender fail</p>
-                    <p className="text-zinc-500 text-sm">.blend</p>
+          <div className="space-y-8">
+            {TYYBID.map(({ key, icon, label }) => {
+              const fs = byType(key);
+              if (!fs.length) return null;
+              return (
+                <div key={key}>
+                  <h2 className="flex items-center gap-2 font-semibold text-zinc-300 mb-3">
+                    <span>{icon}</span>{label}
+                    <span className="text-xs text-zinc-600 font-normal">{fs.length} faili</span>
+                  </h2>
+                  <div className="space-y-2">
+                    {key === "storyboard" && fs.map((f) => (
+                      <div key={f.id} className="bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden">
+                        <img src={f.url} alt={f.failinimi} className="w-full" />
+                        <div className="px-4 py-2 text-xs text-zinc-500">{f.failinimi}</div>
+                      </div>
+                    ))}
+                    {key === "video" && fs.map((f) => (
+                      <div key={f.id} className="bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden">
+                        <video src={f.url} controls className="w-full" />
+                        <div className="px-4 py-2 text-xs text-zinc-500">{f.failinimi}</div>
+                      </div>
+                    ))}
+                    {key === "blend" && (
+                      <div className="bg-zinc-900 border border-zinc-800 rounded-xl divide-y divide-zinc-800">
+                        {fs.map((f) => (
+                          <div key={f.id} className="px-4 py-3 flex items-center justify-between">
+                            <span className="text-sm text-zinc-300">{f.failinimi}</span>
+                            <a href={f.url} download className="text-xs bg-orange-500 hover:bg-orange-600 text-white px-3 py-1.5 rounded-lg transition-colors">
+                              ↓ Laadi alla
+                            </a>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 </div>
-                <a href={data.blend_url} download className="bg-orange-500 hover:bg-orange-600 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors">
-                  ↓ Laadi alla
-                </a>
-              </div>
-            )}
+              );
+            })}
           </div>
         )}
 
