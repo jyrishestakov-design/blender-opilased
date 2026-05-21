@@ -21,6 +21,9 @@ export default async function HomePage() {
             <p className="text-zinc-600 text-xs mt-1">Lohista fail õpilase kaardi peale — laetakse automaatselt üles</p>
           </div>
           <div className="flex items-center gap-4">
+            <Link href="/opetused" className="text-sm text-zinc-400 hover:text-white transition-colors">
+              📄 Õpetused
+            </Link>
             <Link href="/videod" className="text-sm text-zinc-400 hover:text-white transition-colors">
               🎬 Õppevideod
             </Link>
