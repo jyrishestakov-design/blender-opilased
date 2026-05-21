@@ -38,6 +38,7 @@ const DEMO_USERS = [
   { id: "13", name: "Neleli Lisbet Timmer",     email: "neleli.timmer@kool.ee",            password: "Timmer2025",     role: "opilane" as UserRole, grupp: "G2-1b" },
   { id: "14", name: "Teele Ann Tint",           email: "teele.tint@kool.ee",               password: "Tint2025",       role: "opilane" as UserRole, grupp: "G2-2a" },
   { id: "15", name: "Rasmus Veeväli",           email: "rasmus.veevali@kool.ee",           password: "Veevali2025",    role: "opilane" as UserRole, grupp: "G2-5a" },
+  { id: "16", name: "Arabella Altrof",          email: "arabella.altrof@kool.ee",          password: "Altrof2025",     role: "opilane" as UserRole, grupp: "" },
 ];
 
 export const config: NextAuthConfig = {
