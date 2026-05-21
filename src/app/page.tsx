@@ -22,14 +22,17 @@ const OPILASED = [
 
 const RÜHMAD = [...new Set(OPILASED.map((o) => o.grupp))].sort();
 
-type Portfoolio = { slug: string; blend_url: string | null; storyboard_url: string | null; video_url: string | null };
 
 export default async function HomePage() {
   const supabase = supabaseServer();
-  const { data } = await supabase.from("portfooliod").select("slug, blend_url, storyboard_url, video_url");
-  const portfooliod: Portfoolio[] = data ?? [];
+  const { data } = await supabase.from("portfoolio_failid").select("slug, tyyp");
+  const counts: Record<string, { blend: boolean; storyboard: boolean; video: boolean }> = {};
+  for (const row of data ?? []) {
+    if (!counts[row.slug]) counts[row.slug] = { blend: false, storyboard: false, video: false };
+    counts[row.slug][row.tyyp as "blend" | "storyboard" | "video"] = true;
+  }
 
-  function getP(slug: string) { return portfooliod.find((p) => p.slug === slug); }
+  function getP(slug: string) { return counts[slug]; }
 
   return (
     <div className="min-h-screen bg-zinc-950 text-white">
@@ -56,9 +59,9 @@ export default async function HomePage() {
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                 {OPILASED.filter((o) => o.grupp === ryhm).map((op) => {
                   const p = getP(op.slug);
-                  const hasBlend = !!p?.blend_url;
-                  const hasStoryboard = !!p?.storyboard_url;
-                  const hasVideo = !!p?.video_url;
+                  const hasBlend = !!p?.blend;
+                  const hasStoryboard = !!p?.storyboard;
+                  const hasVideo = !!p?.video;
                   const hasAny = hasBlend || hasStoryboard || hasVideo;
 
                   return (

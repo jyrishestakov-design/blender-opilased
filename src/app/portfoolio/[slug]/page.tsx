@@ -46,6 +46,12 @@ export default function PortfoolioPage() {
 
   useEffect(() => { load(); }, [load]);
 
+  async function deleteFile(id: string) {
+    if (!confirm("Kustuta fail?")) return;
+    await fetch(`/api/portfoolio/${slug}`, { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id }) });
+    await load();
+  }
+
   if (!opilane) return (
     <div className="min-h-screen bg-zinc-950 flex items-center justify-center text-zinc-500">
       Õpilast ei leitud.
@@ -87,13 +93,19 @@ export default function PortfoolioPage() {
                     {key === "storyboard" && fs.map((f) => (
                       <div key={f.id} className="bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden">
                         <img src={f.url} alt={f.failinimi} className="w-full" />
-                        <div className="px-4 py-2 text-xs text-zinc-500">{f.failinimi}</div>
+                        <div className="px-4 py-2 flex items-center justify-between">
+                          <span className="text-xs text-zinc-500">{f.failinimi}</span>
+                          <button onClick={() => deleteFile(f.id)} className="text-xs text-zinc-600 hover:text-red-400 transition-colors">Kustuta</button>
+                        </div>
                       </div>
                     ))}
                     {key === "video" && fs.map((f) => (
                       <div key={f.id} className="bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden">
                         <video src={f.url} controls className="w-full" />
-                        <div className="px-4 py-2 text-xs text-zinc-500">{f.failinimi}</div>
+                        <div className="px-4 py-2 flex items-center justify-between">
+                          <span className="text-xs text-zinc-500">{f.failinimi}</span>
+                          <button onClick={() => deleteFile(f.id)} className="text-xs text-zinc-600 hover:text-red-400 transition-colors">Kustuta</button>
+                        </div>
                       </div>
                     ))}
                     {key === "blend" && (
@@ -101,9 +113,10 @@ export default function PortfoolioPage() {
                         {fs.map((f) => (
                           <div key={f.id} className="px-4 py-3 flex items-center justify-between">
                             <span className="text-sm text-zinc-300">{f.failinimi}</span>
-                            <a href={f.url} download className="text-xs bg-orange-500 hover:bg-orange-600 text-white px-3 py-1.5 rounded-lg transition-colors">
-                              ↓ Laadi alla
-                            </a>
+                            <div className="flex items-center gap-2">
+                              <a href={f.url} download className="text-xs bg-orange-500 hover:bg-orange-600 text-white px-3 py-1.5 rounded-lg transition-colors">↓ Laadi alla</a>
+                              <button onClick={() => deleteFile(f.id)} className="text-xs text-zinc-600 hover:text-red-400 transition-colors">Kustuta</button>
+                            </div>
                           </div>
                         ))}
                       </div>
