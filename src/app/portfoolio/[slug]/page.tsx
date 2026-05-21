@@ -1,5 +1,8 @@
-import { notFound } from "next/navigation";
-import { supabaseServer } from "@/lib/supabase-server";
+"use client";
+
+import { useEffect, useState, useCallback } from "react";
+import { useParams, notFound } from "next/navigation";
+import UploadSection from "./UploadSection";
 
 const OPILASED = [
   { id: "1",  nimi: "Aleksandr Baburin",        grupp: "G2-5a", slug: "aleksandr-baburin" },
@@ -20,16 +23,24 @@ const OPILASED = [
   { id: "16", nimi: "Arabella Altrof",          grupp: "G2-5a", slug: "arabella-altrof" },
 ];
 
-type Props = { params: Promise<{ slug: string }> };
+type Portfoolio = { blend_url: string | null; storyboard_url: string | null; video_url: string | null };
 
-export default async function PortfoolioPage({ params }: Props) {
-  const { slug } = await params;
-
+export default function PortfoolioPage() {
+  const params = useParams();
+  const slug = params.slug as string;
   const opilane = OPILASED.find((o) => o.slug === slug);
-  if (!opilane) notFound();
+  const [data, setData] = useState<Portfoolio | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  const supabase = supabaseServer();
-  const { data } = await supabase.from("portfooliod").select("*").eq("slug", slug).single();
+  const load = useCallback(async () => {
+    const res = await fetch(`/api/portfoolio/${slug}`);
+    if (res.ok) setData(await res.json());
+    setLoading(false);
+  }, [slug]);
+
+  useEffect(() => { load(); }, [load]);
+
+  if (!opilane) return null;
 
   const hasAny = data?.blend_url || data?.storyboard_url || data?.video_url;
 
@@ -37,13 +48,16 @@ export default async function PortfoolioPage({ params }: Props) {
     <div className="min-h-screen bg-zinc-950 text-white">
       <div className="max-w-3xl mx-auto px-4 py-12">
         <div className="mb-8">
-          <p className="text-orange-400 text-sm font-medium mb-1">Blender Kool · {opilane!.grupp}</p>
-          <h1 className="text-3xl font-bold">{opilane!.nimi}</h1>
+          <a href="/" className="text-zinc-600 hover:text-zinc-400 text-sm transition-colors">← Kõik õpilased</a>
+          <p className="text-orange-400 text-sm font-medium mt-3 mb-1">Blender Kool · {opilane.grupp}</p>
+          <h1 className="text-3xl font-bold">{opilane.nimi}</h1>
           <p className="text-zinc-500 mt-1">Portfoolio</p>
         </div>
 
-        {!hasAny ? (
-          <div className="text-center py-20 text-zinc-600">
+        {loading ? (
+          <p className="text-zinc-600">Laadin...</p>
+        ) : !hasAny ? (
+          <div className="text-center py-16 text-zinc-600">
             <p className="text-4xl mb-3">🎨</p>
             <p>Failid pole veel lisatud.</p>
           </div>
@@ -89,6 +103,8 @@ export default async function PortfoolioPage({ params }: Props) {
             )}
           </div>
         )}
+
+        <UploadSection slug={slug} onDone={load} />
       </div>
     </div>
   );
