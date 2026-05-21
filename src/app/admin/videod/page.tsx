@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 
-type Video = { id: string; pealkiri: string; kirjeldus: string; youtube_id: string; kategooria: string };
+type Video = { id: string; pealkiri: string; kirjeldus: string; youtube_id: string; kategooria: string; kestus_minutid: number | null };
 
 const KATEGOORIAD = ["Algtase", "Kesktase", "Edasijõudnu"];
 
@@ -14,7 +14,7 @@ function youtubeId(input: string) {
 
 export default function AdminVideodPage() {
   const [videod, setVideod] = useState<Video[]>([]);
-  const [form, setForm] = useState({ pealkiri: "", kirjeldus: "", youtube_id: "", kategooria: "Algtase" });
+  const [form, setForm] = useState({ pealkiri: "", kirjeldus: "", youtube_id: "", kategooria: "Algtase", kestus_minutid: "" });
   const [saving, setSaving] = useState(false);
 
   useEffect(() => { laadiVideod(); }, []);
@@ -33,8 +33,9 @@ export default function AdminVideodPage() {
       kirjeldus: form.kirjeldus,
       youtube_id: youtubeId(form.youtube_id),
       kategooria: form.kategooria,
+      kestus_minutid: form.kestus_minutid ? parseInt(form.kestus_minutid) : null,
     });
-    setForm({ pealkiri: "", kirjeldus: "", youtube_id: "", kategooria: "Algtase" });
+    setForm({ pealkiri: "", kirjeldus: "", youtube_id: "", kategooria: "Algtase", kestus_minutid: "" });
     await laadiVideod();
     setSaving(false);
   }
@@ -73,13 +74,23 @@ export default function AdminVideodPage() {
           placeholder="Kirjeldus (valikuline)"
           className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white text-sm outline-none focus:border-orange-500"
         />
-        <select
-          value={form.kategooria}
-          onChange={(e) => setForm((f) => ({ ...f, kategooria: e.target.value }))}
-          className="bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white text-sm outline-none"
-        >
-          {KATEGOORIAD.map((k) => <option key={k}>{k}</option>)}
-        </select>
+        <div className="flex gap-3">
+          <select
+            value={form.kategooria}
+            onChange={(e) => setForm((f) => ({ ...f, kategooria: e.target.value }))}
+            className="bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white text-sm outline-none"
+          >
+            {KATEGOORIAD.map((k) => <option key={k}>{k}</option>)}
+          </select>
+          <input
+            type="number"
+            min="1"
+            value={form.kestus_minutid}
+            onChange={(e) => setForm((f) => ({ ...f, kestus_minutid: e.target.value }))}
+            placeholder="Kestus (minutites)"
+            className="flex-1 bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white text-sm outline-none focus:border-orange-500"
+          />
+        </div>
         <button type="submit" disabled={saving} className="bg-orange-500 hover:bg-orange-600 disabled:opacity-50 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors">
           {saving ? "Salvestан..." : "+ Lisa video"}
         </button>
