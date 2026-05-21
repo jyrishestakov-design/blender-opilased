@@ -46,33 +46,33 @@ export default function StudentGrid({ initialCounts }: { initialCounts: Counts }
     if (res.ok) setCounts(await res.json());
   }, []);
 
+  async function uploadToSlug(slug: string, files: File[], fixedType?: FileType) {
+    const grouped: Record<FileType, File[]> = { blend: [], storyboard: [], video: [] };
+    for (const file of files) {
+      const t = fixedType ?? detectType(file);
+      if (!t) { alert(`Tundmatu failitüüp: ${file.name}`); continue; }
+      grouped[t].push(file);
+    }
+    setUploading(slug);
+    for (const [type, fs] of Object.entries(grouped) as [FileType, File[]][]) {
+      if (!fs.length) continue;
+      const form = new FormData();
+      fs.forEach((f) => form.append("files", f));
+      form.append("slug", slug);
+      form.append("type", type);
+      await fetch("/api/upload-portfoolio-public", { method: "POST", body: form });
+    }
+    setUploading(null);
+    setDone(slug);
+    setTimeout(() => setDone(null), 2000);
+    await refreshCounts();
+  }
+
   async function handleDrop(e: React.DragEvent, opilane: typeof OPILASED[0]) {
     e.preventDefault();
     setDragOver(null);
     const files = Array.from(e.dataTransfer.files);
-    if (!files.length) return;
-
-    const grouped: Record<FileType, File[]> = { blend: [], storyboard: [], video: [] };
-    for (const file of files) {
-      const t = detectType(file);
-      if (!t) { alert(`Tundmatu failitüüp: ${file.name}`); continue; }
-      grouped[t].push(file);
-    }
-
-    for (const [type, fs] of Object.entries(grouped) as [FileType, File[]][]) {
-      if (!fs.length) continue;
-      setUploading(opilane.slug);
-      const form = new FormData();
-      fs.forEach((f) => form.append("files", f));
-      form.append("slug", opilane.slug);
-      form.append("type", type);
-      await fetch("/api/upload-portfoolio-public", { method: "POST", body: form });
-    }
-
-    setUploading(null);
-    setDone(opilane.slug);
-    setTimeout(() => setDone(null), 2000);
-    await refreshCounts();
+    if (files.length) uploadToSlug(opilane.slug, files);
   }
 
   return (
@@ -110,16 +110,36 @@ export default function StudentGrid({ initialCounts }: { initialCounts: Counts }
                       </div>
                       <span className="text-zinc-600 group-hover:text-orange-400 transition-colors text-sm">↗</span>
                     </div>
-                    <div className="flex gap-2">
-                      {[
-                        { label: "Blend", has: !!p?.blend, icon: "🟠" },
-                        { label: "Storyboard", has: !!p?.storyboard, icon: "🖼️" },
-                        { label: "Video", has: !!p?.video, icon: "🎬" },
-                      ].map(({ label, has, icon }) => (
-                        <span key={label} className={`flex items-center gap-1 text-xs px-2 py-1 rounded ${has ? "bg-green-900/30 text-green-400 border border-green-800" : "bg-zinc-800 text-zinc-600 border border-zinc-700"}`}>
-                          {icon} {label}
-                        </span>
-                      ))}
+                    <div className="flex gap-2" onClick={(e) => e.preventDefault()}>
+                      {([
+                        { label: "Blend",      type: "blend"      as FileType, has: !!p?.blend,      icon: "🟠" },
+                        { label: "Storyboard", type: "storyboard" as FileType, has: !!p?.storyboard, icon: "🖼️" },
+                        { label: "Video",      type: "video"      as FileType, has: !!p?.video,      icon: "🎬" },
+                      ]).map(({ label, type, has, icon }) => {
+                        const slotKey = `${op.slug}-${type}`;
+                        const slotOver = dragOver === slotKey;
+                        return (
+                          <span
+                            key={label}
+                            className={`flex items-center gap-1 text-xs px-2 py-1 rounded border transition-all cursor-copy ${
+                              slotOver ? "border-orange-400 bg-orange-500/20 text-orange-300 scale-105" :
+                              has ? "bg-green-900/30 text-green-400 border-green-800" :
+                              "bg-zinc-800 text-zinc-500 border-zinc-700"
+                            }`}
+                            onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); setDragOver(slotKey); }}
+                            onDragLeave={(e) => { e.stopPropagation(); setDragOver(null); }}
+                            onDrop={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              setDragOver(null);
+                              const files = Array.from(e.dataTransfer.files);
+                              if (files.length) uploadToSlug(op.slug, files, type);
+                            }}
+                          >
+                            {icon} {slotOver ? "↓" : label}
+                          </span>
+                        );
+                      })}
                     </div>
                   </Link>
                 </div>
