@@ -17,7 +17,7 @@ const OPILASED = [
   { id: "13", nimi: "Neleli Lisbet Timmer",     grupp: "G2-1b", slug: "neleli-timmer" },
   { id: "14", nimi: "Teele Ann Tint",           grupp: "G2-2a", slug: "teele-tint" },
   { id: "15", nimi: "Rasmus Veeväli",           grupp: "G2-5a", slug: "rasmus-veevali" },
-  { id: "16", nimi: "Arabella Altrof",          grupp: "",      slug: "arabella-altrof" },
+  { id: "16", nimi: "Arabella Altrof",          grupp: "G2-5a", slug: "arabella-altrof" },
 ];
 
 type Props = { params: Promise<{ slug: string }> };
