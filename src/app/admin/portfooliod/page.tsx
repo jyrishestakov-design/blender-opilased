@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 
 const OPILASED = [
@@ -104,20 +104,22 @@ export default function AdminPortfooliodPage() {
     const key: UploadingKey = `${opilane.id}-${type}`;
     setUploading((s) => new Set(s).add(key));
 
-    const ext = file.name.split(".").pop();
-    const path = `${opilane.slug}/${type}.${ext}`;
-    const { error } = await supabase.storage.from("portfooliod").upload(path, file, { upsert: true });
-    if (error) { alert("Upload ebaõnnestus: " + error.message); setUploading((s) => { const n = new Set(s); n.delete(key); return n; }); return; }
+    const form = new FormData();
+    form.append("file", file);
+    form.append("slug", opilane.slug);
+    form.append("id", opilane.id);
+    form.append("nimi", opilane.nimi);
+    form.append("grupp", opilane.grupp);
+    form.append("type", type);
 
-    const { data: urlData } = supabase.storage.from("portfooliod").getPublicUrl(path);
-    const field = type === "blend" ? "blend_url" : type === "storyboard" ? "storyboard_url" : "video_url";
+    const res = await fetch("/api/upload-portfoolio", { method: "POST", body: form });
+    const data = await res.json();
 
-    await supabase.from("portfooliod").upsert({
-      id: opilane.id, opilane_nimi: opilane.nimi, grupp: opilane.grupp, slug: opilane.slug,
-      [field]: urlData.publicUrl, updated_at: new Date().toISOString(),
-    }, { onConflict: "id" });
-
-    await load();
+    if (!res.ok) {
+      alert("Upload ebaõnnestus: " + data.error);
+    } else {
+      await load();
+    }
     setUploading((s) => { const n = new Set(s); n.delete(key); return n; });
   }
 
