@@ -39,9 +39,14 @@ export default async function HomePage() {
             <p className="text-orange-400 text-sm font-medium mb-1">Blender Kool</p>
             <h1 className="text-3xl font-bold">Õpilaste portfooliod</h1>
           </div>
-          <Link href="/auth/login" className="text-sm text-zinc-500 hover:text-zinc-300 transition-colors">
-            Õpetaja sisselogimine →
-          </Link>
+          <div className="flex items-center gap-4">
+            <Link href="/videod" className="text-sm text-zinc-400 hover:text-white transition-colors">
+              🎬 Õppevideod
+            </Link>
+            <Link href="/auth/login" className="text-sm text-zinc-500 hover:text-zinc-300 transition-colors">
+              Õpetaja sisselogimine →
+            </Link>
+          </div>
         </div>
 
         <div className="space-y-8">
