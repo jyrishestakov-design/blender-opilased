@@ -3,12 +3,18 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 
+const PUBLIC = ["/portfoolio"];
 const PROTECTED = ["/dashboard", "/ankeedid", "/opetused", "/failid", "/sonumid", "/videod"];
 const ADMIN_ONLY = ["/admin"];
 
 export async function proxy(request: NextRequest) {
   const session = await auth();
   const pathname = request.nextUrl.pathname;
+
+  // Avalikud portfoolio lehed — ilma sisselogimiseta
+  if (PUBLIC.some((p) => pathname.startsWith(p))) {
+    return NextResponse.next();
+  }
 
   // Admin lehed ainult õpetajale
   if (ADMIN_ONLY.some((p) => pathname.startsWith(p))) {

@@ -20,6 +20,7 @@ export default async function AdminPage() {
     { href: "/admin/videod", icon: "🎬", title: "YouTube videod", desc: "Lisa ja kustuta õpetusvideoeid", count: videoCount ?? 0, label: "videot" },
     { href: "/admin/lehed", icon: "🗂️", title: "Lehtede haldus", desc: "Tee lehed nähtavaks või peida need", count: null, label: "" },
     { href: "/admin/opilased", icon: "👥", title: "Õpilased", desc: "Vaata õpilaste sisselogimisandmeid", count: 15, label: "õpilast" },
+    { href: "/admin/portfooliod", icon: "🎨", title: "Portfooliod", desc: "Laadi üles blend, storyboard ja video", count: null, label: "" },
   ];
 
   return (
